@@ -23,7 +23,7 @@ def main():
         help='URL to check. Defaults to citaslegalizaciones.mppre.gob.ve'
     )
     parser.add_argument(
-        '-t'
+        '-t',
         '--timezone',
         required=False,
         default='America/Bogota',
@@ -54,6 +54,11 @@ def main():
     req_session = Session()
     url = 'https://isitup.org/{0}.json'.format(args.url)
 
+    sc.api_call(
+        "chat.postMessage",
+        channel=args.channel,
+        text=":thumbsup: Hello I'm the apostilla-slack bot :thumbsup:"
+    )
     start_t = datetime.datetime.now(timezone(args.timezone))
     while True:
         try:
@@ -70,11 +75,33 @@ def main():
         else:
             jsonR = response.json()
             if jsonR['status_code'] == 1:
-                sc.api_call(
-                  "chat.postMessage",
-                  channel=args.channel,
-                  text=":thumbsup: The page *http://{0}* is *UP*!!".format(args.url)
-                )
+                if args.url == 'citaslegalizaciones.mppre.gob.ve':
+                    apos_url = 'https://{0}'.format(args.url)
+                    apos_response = req_session.get(apos_url)
+                    if 'banner_mantenimiento.jpg' in apos_response.text:
+                        end_t = datetime.datetime.now(timezone(args.timezone))
+                        elapsed = end_t - start_t
+                        if elapsed > datetime.timedelta(minutes=args.downtime):
+                            sc.api_call(
+                              "chat.postMessage",
+                              channel=args.channel,
+                              text=(":disappointed: I am sorry to report that *http://{0}* has been *down* for more "
+                            "than {1} minutes (counted since: {2})").format(args.url,args.downtime,start_t.strftime("%Y-%m-%d %H:%M"))
+                            )
+                            start_t = datetime.datetime.now(timezone(args.timezone))
+                        sleep(args.sleeptime)
+                    else:
+                        sc.api_call(
+                          "chat.postMessage",
+                          channel=args.channel,
+                          text=":thumbsup: The page *http://{0}* is *UP*!!".format(args.url)
+                        )
+                else:
+                    sc.api_call(
+                      "chat.postMessage",
+                      channel=args.channel,
+                      text=":thumbsup: The page *http://{0}* is *UP*!!".format(args.url)
+                    )
                 sleep(args.sleeptime)
                 start_t = datetime.datetime.now(timezone(args.timezone))
             elif jsonR['status_code'] == 2:
